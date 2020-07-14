@@ -1,4 +1,4 @@
-
+<?php
 /**
  * Restarts the bot
  *
