@@ -9,8 +9,8 @@ use danog\MadelineProto\RPCErrorException;
 use realSamy\tools\ConfigHelper;
 use realSamy\tools\DatabaseHandler;
 
-include 'DatabaseHandler.php';
-include 'ConfigHelper.php';
+include 'autoload.php';
+
 function arrayMerge(array $array1, array $array2)
 {
     $merged = $array1;
