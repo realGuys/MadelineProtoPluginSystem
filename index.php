@@ -4,13 +4,10 @@ use danog\MadelineProto\API;
 use danog\MadelineProto\APIWrapper;
 use danog\MadelineProto\EventHandler;
 use danog\MadelineProto\Logger;
-use danog\MadelineProto\Loop\Generic\GenericLoop;
-use danog\MadelineProto\RPCErrorException;
 use realSamy\tools\ConfigHelper;
 use realSamy\tools\DatabaseHandler;
 
 include 'autoload.php';
-
 function arrayMerge(array $array1, array $array2)
 {
     $merged = $array1;
@@ -26,9 +23,32 @@ function arrayMerge(array $array1, array $array2)
 }
 
 $configHandler = new ConfigHelper(md5(__FILE__));
-if ($configHandler->get('SETUP_DONE') === null) {
-    if (!isset($_POST['OWNER'])) {
-        echo <<<'HTML'
+if (isset($_GET['config']) || in_array('--config', $argv, true) || $configHandler->get('SETUP_DONE') === null) {
+    if (PHP_SAPI === 'cli') {
+        version:
+        $madelineVersion = strtolower(readline('MadelineProto version (new/old): '));
+        if (!in_array($madelineVersion, ['old', 'new'])) {
+            echo 'Please type and enter "old" or "new"' . PHP_EOL;
+            goto version;
+        }
+        admin:
+        $adminID = readline('Admin ID or @username: ');
+        echo $adminID;
+        if (!preg_match('/^([@]?([a-z]+[a-z_\d]{4,}))|([\d]{6,})/i', $adminID)) {
+            echo 'Admin ID was not correct, enter valid username or id' . PHP_EOL;
+            goto admin;
+        }
+        $configs = [
+            'OWNER'            => $adminID,
+            'MADELINE_VERSION' => $madelineVersion,
+            'DATABASE_HOST'    => readline('database host: '),
+            'DATABASE_USER'    => readline('database username: '),
+            'DATABASE_PASS'    => readline('database password: '),
+            'DATABASE_NAME'    => readline('database name: '),
+        ];
+    }
+    elseif (!isset($_POST['OWNER'])) {
+        echo <<<HTML
 <!doctype html>
 <html lang="fa">
 <head>
@@ -53,7 +73,7 @@ if ($configHandler->get('SETUP_DONE') === null) {
             <div class="card-header px-4 py-3"> لطفا اطلاعات خواسته شده را با دقت وارد کنید!</div>
             <div class="card-content">
                 <label class="label" for="adminID">آیدی ادمین: </label>
-                <input class="input is-primary" id="adminID" name="OWNER" required type="text">
+                <input class="input is-primary" id="adminID" name="OWNER" value="{$configHandler->get('OWNER')}" required type="text">
                 <hr>
               <label class="label" for="MadelineVer">انتخاب ورژن میدلاین: </label>
               <select name="MADELINE_VERSION" dir="rtl" class="input" id="MadelineVer">
@@ -68,13 +88,13 @@ if ($configHandler->get('SETUP_DONE') === null) {
                 <h5 class="has-text-centered">اطلاعات دیتابیس</h5>
                 <hr>
                 <label class="label" for="host">آدرس هاست: </label>
-                <input class="input is-primary" id="host" name="DATABASE_HOST" required type="text" value="localhost">
+                <input class="input is-primary" id="host" name="DATABASE_HOST" required type="text" value="{$configHandler->get('DATABASE_HOST', 'localhost')}">
                 <label class="label" for="username">نام کاربری: </label>
-                <input class="input is-primary" id="username" name="DATABASE_USERNAME" required type="text">
+                <input class="input is-primary" id="username" name="DATABASE_USERNAME" value="{$configHandler->get('DATABASE_USERNAME')}" required type="text">
                 <label class="label" for="password">رمز:</label>
-                <input class="input is-primary" id="password" name="DATABASE_PASSWORD" required type="password">
+                <input class="input is-primary" id="password" name="DATABASE_PASSWORD" value="'{$configHandler->get('DATABASE_PASSWORD')}'" required type="password">
                 <label class="label" for="database">نام دیتابیس:</label>
-                <input class="input is-primary" id="database" name="DATABASE_NAME" required type="text">
+                <input class="input is-primary" id="database" name="DATABASE_NAME" value="{$configHandler->get('DATABASE_NAME')}" required type="text">
 
 
             </div>
@@ -90,14 +110,16 @@ if ($configHandler->get('SETUP_DONE') === null) {
 HTML;
         exit();
     }
+    else {
+        $configs = $_POST;
+    }
     $configHandler->set('SETUP_DONE', true);
-    $configHandler->setArray($_POST);
+    $configHandler->setArray($configs);
     $configHandler->setArray([
-        'BOT_STATE'                => true,
-        'BOT_GET_REPORTS'          => false,
+        'BOT_STATE'       => true,
+        'BOT_GET_REPORTS' => false,
     ]);
 }
-
 switch ($configHandler->get('MADELINE_VERSION', 'new')) {
     case 'old':
         if (!file_exists('madeline.php')) {
@@ -112,7 +134,6 @@ switch ($configHandler->get('MADELINE_VERSION', 'new')) {
         include 'MadelineProto.php';
         break;
 }
-
 $databaseHandler = new DatabaseHandler($configHandler->get('DATABASE_HOST'), $configHandler->get('DATABASE_USERNAME'), $configHandler->get('DATABASE_PASSWORD'), $configHandler->get('DATABASE_NAME'));
 try {
     $databaseHandler->rawQuery(
@@ -128,7 +149,6 @@ CREATE TABLE IF NOT EXISTS bot_admins
 ) DEFAULT CHARSET=utf8mb4;
 sql
     );
-
 } catch (Exception $e) {
     Logger::log($e);
     die($e->getMessage());
@@ -211,7 +231,7 @@ class realGuys extends EventHandler
         foreach (static::$closures as $role => $closures) {
             foreach ($closures as &$closure) {
                 try {
-                    $closure = $closure->bind($this, self::class);
+                    $closure = $closure->bindTo($this);
                 } catch (Throwable $e) {
                     Logger::log($e);
                     $this->report($e->getMessage());
