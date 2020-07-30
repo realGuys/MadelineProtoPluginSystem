@@ -21,7 +21,15 @@ function arrayMerge(array $array1, array $array2)
     }
     return $merged;
 }
-
+if (!function_exists('readline')){
+    function readline ($prompt=null) {
+        echo $prompt;
+	    while (($res = fgets(STDIN)) === false) {
+	    	usleep(10);
+	    }
+	    return str_replace(PHP_EOL, null, $res);
+    }
+}
 $configHandler = new ConfigHelper(md5(__FILE__));
 if (isset($_GET['config']) || in_array('--config', $argv ?? [], true) || $configHandler->get('SETUP_DONE') === null) {
     if (PHP_SAPI === 'cli') {
