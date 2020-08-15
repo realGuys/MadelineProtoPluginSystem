@@ -4,10 +4,12 @@ use danog\MadelineProto\API;
 use danog\MadelineProto\APIWrapper;
 use danog\MadelineProto\EventHandler;
 use danog\MadelineProto\Logger;
+use realSamy\tools\CliTextHandler;
 use realSamy\tools\ConfigHelper;
 use realSamy\tools\DatabaseHandler;
 
 include 'autoload.php';
+
 function arrayMerge(array $array1, array $array2)
 {
     $merged = $array1;
@@ -21,38 +23,29 @@ function arrayMerge(array $array1, array $array2)
     }
     return $merged;
 }
-if (!function_exists('readline')){
-    function readline ($prompt=null) {
-        echo $prompt;
-	    while (($res = fgets(STDIN)) === false) {
-	    	usleep(10);
-	    }
-	    return str_replace(PHP_EOL, null, $res);
-    }
-}
+
 $configHandler = new ConfigHelper(md5(__FILE__));
-if (isset($_GET['config']) || in_array('--config', $argv ?? [], true) || $configHandler->get('SETUP_DONE') === null) {
+if (isset($_GET['config']) || in_array('--config', $argv, true) || $configHandler->get('SETUP_DONE') === null) {
     if (PHP_SAPI === 'cli') {
         version:
-        $madelineVersion = strtolower(readline('MadelineProto version (new/old): '));
+        $madelineVersion = strtolower(CliTextHandler::readline('MadelineProto version (new/old): %s', 3, true));
         if (!in_array($madelineVersion, ['old', 'new'])) {
-            echo 'Please type and enter "old" or "new"' . PHP_EOL;
+            echo CliTextHandler::echo_red('Please type and enter "old" or "new"') . PHP_EOL;
             goto version;
         }
         admin:
-        $adminID = readline('Admin ID or @username: ');
-        echo $adminID;
+        $adminID = CliTextHandler::readline('Admin ID or @username: ');
         if (!preg_match('/^([@]?([a-z]+[a-z_\d]{4,}))|([\d]{6,})/i', $adminID)) {
-            echo 'Admin ID was not correct, enter valid username or id' . PHP_EOL;
+            echo CliTextHandler::echo_red('Admin ID was not correct, enter valid username or id') . PHP_EOL;
             goto admin;
         }
         $configs = [
-            'OWNER'            => $adminID,
-            'MADELINE_VERSION' => $madelineVersion,
-            'DATABASE_HOST'    => readline('database host: '),
-            'DATABASE_USER'    => readline('database username: '),
-            'DATABASE_PASS'    => readline('database password: '),
-            'DATABASE_NAME'    => readline('database name: '),
+            'OWNER'             => $adminID,
+            'MADELINE_VERSION'  => $madelineVersion,
+            'DATABASE_HOST'     => CliTextHandler::readline('database host: '),
+            'DATABASE_USERNAME' => CliTextHandler::readline('database username: '),
+            'DATABASE_PASSWORD' => CliTextHandler::readline('database password: '),
+            'DATABASE_NAME'     => CliTextHandler::readline('database name: '),
         ];
     }
     elseif (!isset($_POST['OWNER'])) {
@@ -239,7 +232,7 @@ class realGuys extends EventHandler
         foreach (static::$closures as $role => $closures) {
             foreach ($closures as &$closure) {
                 try {
-                    $closure = $closure->bindTo($this);
+                    $closure = $closure::bind($closure, $this);
                 } catch (Throwable $e) {
                     Logger::log($e);
                     $this->report($e->getMessage());
@@ -284,7 +277,7 @@ class realGuys extends EventHandler
                         }
                         break;
                     case 'admin':
-                        if (!in_array($update['message']['from_id'], array_merge([yield $this->getInfo($this->configHandler->get('OWNER'))['bot_api_id']], array_column($this->databaseHandler->get('realSamy_tabchi_admins'), 'user_id')), false)) {
+                        if (!in_array($update['message']['from_id'], array_merge([yield $this->getInfo($this->configHandler->get('OWNER'))['bot_api_id']], array_column($this->databaseHandler->get('bot_admins'), 'user_id')), false)) {
                             return;
                         }
                         foreach ($closures as $command => $closure) {
