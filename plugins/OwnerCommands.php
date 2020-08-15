@@ -51,7 +51,7 @@ $command['owner']['addAdmin'] = function (array $update): Generator {
         }
         else {
             $this->databaseHandler->reset();
-            $db = $this->databaseHandler->insert('realSamy_tabchi_admins', [
+            $db = $this->databaseHandler->insert('bot_admins', [
                 'username'   => $user['username'],
                 'first_name' => $user['first_name'] ?? $user['id'],
                 'user_id'    => $user['id'],
@@ -75,7 +75,7 @@ $command['owner']['addAdmin'] = function (array $update): Generator {
                 $user = yield $this->messages->getMessages(['id' => [$update['message']['reply_to_msg_id']]])['users'][0];
         }
         $this->databaseHandler->reset();
-        $db = $this->databaseHandler->insert('realSamy_tabchi_admins', [
+        $db = $this->databaseHandler->insert('bot_admins', [
             'username'   => $user['username'],
             'first_name' => $user['first_name'],
             'user_id'    => $user['id'],
@@ -113,7 +113,7 @@ $command['owner']['delAdmin'] = function (array $update): Generator {
         else {
             $this->databaseHandler->reset();
             $this->databaseHandler->where('user_id', $user['id']);
-            $db = $this->databaseHandler->delete('realSamy_tabchi_admins');
+            $db = $this->databaseHandler->delete('bot_admins');
             if ($db) {
                 $text = "کاربر [{$user['first_name']}](mention:{$user['id']}) از ادمینی ربات عزل شد!";
             }
@@ -133,7 +133,7 @@ $command['owner']['delAdmin'] = function (array $update): Generator {
         }
         $this->databaseHandler->reset();
         $this->databaseHandler->where('user_id', $user['id']);
-        $db = $this->databaseHandler->delete('realSamy_tabchi_admins');
+        $db = $this->databaseHandler->delete('bot_admins');
         if ($db) {
             $text = "کاربر [{$user['first_name']}](mention:{$user['id']}) از ادمینی ربات عزل شد!";
         }
@@ -161,8 +161,8 @@ $command['owner']['listAdmin'] = function (array $update): Generator {
     $text = "لیست ادمین های ربات:\n";
     $c = 1;
     $this->databaseHandler->reset();
-    $this->databaseHandler->orderBy('realSamy_tabchi_admins.first_name');
-    $admins = $this->databaseHandler->get('realSamy_tabchi_admins', null, 'user_id, first_name, username');
+    $this->databaseHandler->orderBy('bot_admins.first_name');
+    $admins = $this->databaseHandler->get('bot_admins', null, 'user_id, first_name, username');
     if ($admins !== []) {
         foreach ($admins as $admin) {
             $adminName = $admin['first_name'];
