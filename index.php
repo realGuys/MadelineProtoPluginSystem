@@ -269,11 +269,14 @@ class realGuys extends EventHandler
         }
         try {
             foreach (static::$closures as $roleName => $closures) {
+		if ($roleName === 'owner' && $update['message']['from_id'] !== $this->ownerID) {
+                    continue;
+                }
+                if ($roleName === 'admin' && $update['message']['from_id'] !== $this->ownerID && !$this->isAdmin($update['message']['from_id'])) {
+                    continue;
+                }
                 switch ($roleName) {
                     case 'owner':
-                        if ($update['message']['from_id'] !== $this->ownerID) {
-                            return;
-                        }
                         foreach ($closures as $command => $closure) {
                             if (stripos($update['message']['message'] ?? '', $command) === 0) {
                                 if (($result = $closure($update)) instanceof Generator) {
@@ -284,9 +287,6 @@ class realGuys extends EventHandler
                         }
                         break;
                     case 'admin':
-                        if ($update['message']['from_id'] !== $this->ownerID && !$this->isAdmin($update['message']['from_id'])) {
-                            return;
-                        }
                         foreach ($closures as $command => $closure) {
                             if (stripos($update['message']['message'] ?? '', $command) === 0) {
                                 if (($result = $closure($update)) instanceof Generator) {
