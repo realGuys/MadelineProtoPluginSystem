@@ -1,15 +1,40 @@
 <?php
 
+use Amp\Mysql;
+use Amp\Mysql\Pool;
+use Amp\Sql\ConnectionException;
+use Amp\Sql\FailureException;
 use danog\MadelineProto\API;
 use danog\MadelineProto\APIWrapper;
 use danog\MadelineProto\EventHandler;
 use danog\MadelineProto\Logger;
 use realSamy\tools\CliTextHandler;
 use realSamy\tools\ConfigHelper;
-use realSamy\tools\DatabaseHandler;
 
 include 'autoload.php';
+function repeat($text, int $num)
+{
+    $res = '';
+    for ($i = $num; $i > 0; $i--) {
+        $res .= $text;
+    }
+    return $res;
+}
 
+if (!function_exists('mb_str_split')) {
+    function mb_str_split($str, $l = 0)
+    {
+        if ($l > 0) {
+            $ret = [];
+            $len = mb_strlen($str, "UTF-8");
+            for ($i = 0; $i < $len; $i += $l) {
+                $ret[] = mb_substr($str, $i, $l, "UTF-8");
+            }
+            return $ret;
+        }
+        return preg_split("//u", $str, -1, PREG_SPLIT_NO_EMPTY);
+    }
+}
 function arrayMerge(array $array1, array $array2)
 {
     $merged = $array1;
@@ -71,36 +96,36 @@ if (isset($_GET['config']) || in_array('--config', $argv, true) || $configHandle
 <main class="level-item py-6">
     <form class="control" method="post">
         <div class="card has-shadow">
-            <div class="card-header px-4 py-3"> لطفا اطلاعات خواسته شده را با دقت وارد کنید!</div>
+            <div class="card-header px-4 py-3"> Please Enter All Requested Fields!</div>
             <div class="card-content">
-                <label class="label" for="adminID">آیدی ادمین: </label>
+                <label class="label" for="adminID">Admin Identity: </label>
                 <input class="input is-primary" id="adminID" name="OWNER" value="{$configHandler->get('OWNER')}" required type="text">
                 <hr>
-              <label class="label" for="MadelineVer">انتخاب ورژن میدلاین: </label>
+              <label class="label" for="MadelineVer">Select MadelineProto Version: </label>
               <select name="MADELINE_VERSION" dir="rtl" class="input" id="MadelineVer">
-                <optgroup label = "نیازمند پی اچ پی 7.4 به بالا">
-                <option value="new">جدید (همراه با استفاده از MySQL به جای رم)</option>
+                <optgroup label = "php7.4+">
+                <option value="new">New (Unofficial Phar, Uses MySQL Instead Of Ram)</option>
                   </optgroup>
-                    <optgroup label="نیازمند پی اچ پی 7.0 به بالا">
-                <option value="old">قدیمی</option>
+                    <optgroup label="php7+">
+                <option value="old">Old</option>
                       </optgroup>
               </select>
               <hr>
-                <h5 class="has-text-centered">اطلاعات دیتابیس</h5>
+                <h5 class="has-text-centered">Database</h5>
                 <hr>
-                <label class="label" for="host">آدرس هاست: </label>
+                <label class="label" for="host">Host: </label>
                 <input class="input is-primary" id="host" name="DATABASE_HOST" required type="text" value="{$configHandler->get('DATABASE_HOST', 'localhost')}">
-                <label class="label" for="username">نام کاربری: </label>
+                <label class="label" for="username">Username: </label>
                 <input class="input is-primary" id="username" name="DATABASE_USERNAME" value="{$configHandler->get('DATABASE_USERNAME')}" required type="text">
-                <label class="label" for="password">رمز:</label>
-                <input class="input is-primary" id="password" name="DATABASE_PASSWORD" value="'{$configHandler->get('DATABASE_PASSWORD')}'" required type="password">
-                <label class="label" for="database">نام دیتابیس:</label>
+                <label class="label" for="password">Password:</label>
+                <input class="input is-primary" id="password" name="DATABASE_PASSWORD" value="'{$configHandler->get('DATABASE_PASSWORD')}'" type="password">
+                <label class="label" for="database">Database:</label>
                 <input class="input is-primary" id="database" name="DATABASE_NAME" value="{$configHandler->get('DATABASE_NAME')}" required type="text">
 
 
             </div>
             <div class="card-footer">
-                <input class="button is-primary input" type="submit" value="ثبت اطلاعات">
+                <input class="button is-primary input" type="submit" value="Start">
             </div>
 
         </div>
@@ -135,25 +160,6 @@ switch ($configHandler->get('MADELINE_VERSION', 'new')) {
         include 'MadelineProto.php';
         break;
 }
-$databaseHandler = new DatabaseHandler($configHandler->get('DATABASE_HOST'), $configHandler->get('DATABASE_USERNAME'), $configHandler->get('DATABASE_PASSWORD'), $configHandler->get('DATABASE_NAME'));
-try {
-    $databaseHandler->rawQuery(
-        <<<'sql'
-CREATE TABLE IF NOT EXISTS bot_admins 
-(
-	`id` INT AUTO_INCREMENT PRIMARY KEY NOT NULL,
-	`username` VARCHAR(30) NULL,
-	`user_id` BIGINT UNIQUE NOT NULL,
-	`first_name` VARCHAR(30) NOT NULL,
-	`last_name` VARCHAR(30) NULL,
-	`added` DATETIME DEFAULT current_timestamp() NOT NULL
-) DEFAULT CHARSET=utf8mb4;
-sql
-    );
-} catch (Exception $e) {
-    Logger::log($e);
-    die($e->getMessage());
-}
 $settings = [
     'logger'        => [
         'max_size' => 1 * 1024 * 1024,
@@ -187,18 +193,22 @@ class realGuys extends EventHandler
      */
     protected static $closures = [];
     /**
+     * @var Pool
+     */
+    protected static $db;
+    /**
      * @var ConfigHelper
      */
     public $configHandler;
-    /**
-     * @var DatabaseHandler
-     */
-    public $databaseHandler;
+    public $ownerID;
 
     public function __construct(?APIWrapper $MadelineProto)
     {
         $this->configHandler = new ConfigHelper(md5(__FILE__));
-        $this->databaseHandler = new DatabaseHandler($this->configHandler->get('DATABASE_HOST'), $this->configHandler->get('DATABASE_USERNAME'), $this->configHandler->get('DATABASE_PASSWORD'), $this->configHandler->get('DATABASE_NAME'));
+        $config = $config = Mysql\ConnectionConfig::fromString(
+            "host=" . $this->configHandler->get('DATABASE_HOST') . " user=" . $this->configHandler->get('DATABASE_USERNAME') . " password=" . $this->configHandler->get('DATABASE_PASSWORD') . " db=" . $this->configHandler->get('DATABASE_NAME')
+        );
+        static::$db = Mysql\pool($config);
         parent::__construct($MadelineProto);
     }
 
@@ -209,35 +219,51 @@ class realGuys extends EventHandler
      */
     final public function getReportPeers(): array
     {
-        return $this->configHandler->get('BOT_GET_REPORTS') ? [$this->configHandler->get('OWNER')] : [];
+        return (bool)($this->configHandler->get('BOT_GET_REPORTS', false) ?? false) ? [$this->ownerID ?? $this->configHandler->get('OWNER')] : [];
     }
 
     /**
      * Called on startup, can contain async calls for initialization of the bot
+     *
+     * @return Generator
      */
-    final public function onStart(): void
+    final public function onStart(): Generator
     {
-        static::$closures = [];
-        $merged = [];
-        foreach (glob('plugins/*') as $plugin) {
-            try {
-                $include = include $plugin;
-                $merged = arrayMerge(static::$closures, $include);
-            } catch (Throwable $e) {
-                Logger::log($e);
-                $this->report($e->getMessage());
-            }
-        }
-        static::$closures = $merged;
-        foreach (static::$closures as $role => $closures) {
-            foreach ($closures as &$closure) {
+        try {
+            $this->ownerID = yield $this->getInfo($this->configHandler->get('OWNER'))['bot_api_id'];
+            yield static::$db->query('CREATE TABLE IF NOT EXISTS bot_admins 
+(
+	`id` INT AUTO_INCREMENT PRIMARY KEY NOT NULL,
+	`username` VARCHAR(30) NULL,
+	`user_id` BIGINT UNIQUE NOT NULL,
+	`first_name` VARCHAR(30) NOT NULL,
+	`last_name` VARCHAR(30) NULL,
+	`added` DATETIME DEFAULT current_timestamp() NOT NULL
+) DEFAULT CHARSET=utf8mb4;');
+            static::$closures = [];
+            $merged = [];
+            foreach (glob('plugins/*') as $plugin) {
                 try {
-                    $closure = $closure::bind($closure, $this);
+                    $include = include $plugin;
+                    $merged = arrayMerge(static::$closures, $include);
                 } catch (Throwable $e) {
                     Logger::log($e);
                     $this->report($e->getMessage());
                 }
             }
+            static::$closures = $merged;
+            foreach (static::$closures as $role => $closures) {
+                foreach ($closures as &$closure) {
+                    try {
+                        $closure = $closure::bind($closure, $this);
+                    } catch (Throwable $e) {
+                        Logger::log($e);
+                        $this->report($e->getMessage());
+                    }
+                }
+            }
+        } catch (Throwable $e) {
+            $this->report("Error:\n$e");
         }
     }
 
@@ -267,40 +293,67 @@ class realGuys extends EventHandler
             foreach (static::$closures as $roleName => $closures) {
                 switch ($roleName) {
                     case 'owner':
-                        if ($update['message']['from_id'] !== yield $this->getInfo($this->configHandler->get('OWNER'))['bot_api_id']) {
+                        if ($update['message']['from_id'] !== $this->ownerID) {
                             return;
                         }
                         foreach ($closures as $command => $closure) {
-                            if (stripos($update['message']['message'] ?? null, $command) === 0) {
-                                yield $closure($update);
+                            if (stripos($update['message']['message'] ?? '', $command) === 0) {
+                                if (($result = $closure($update)) instanceof Generator) {
+                                    yield from $result;
+                                }
+                                break 3;
                             }
                         }
                         break;
                     case 'admin':
-                        if (!in_array($update['message']['from_id'], array_merge([yield $this->getInfo($this->configHandler->get('OWNER'))['bot_api_id']], array_column($this->databaseHandler->get('bot_admins'), 'user_id')), false)) {
+                        if ($update['message']['from_id'] !== $this->ownerID && !$this->isAdmin($update['message']['from_id'])) {
                             return;
                         }
                         foreach ($closures as $command => $closure) {
-                            if (stripos($update['message']['message'] ?? null, $command) === 0) {
-                                yield $closure($update);
+                            if (stripos($update['message']['message'] ?? '', $command) === 0) {
+                                if (($result = $closure($update)) instanceof Generator) {
+                                    yield from $result;
+                                }
+                                break 3;
                             }
                         }
                         break;
                     case 'user':
                     default:
                         foreach ($closures as $command => $closure) {
-                            if (stripos($update['message']['message'] ?? null, $command) === 0) {
-                                yield $closure($update);
+                            if (stripos($update['message']['message'] ?? '', $command) === 0) {
+                                if (($result = $closure($update)) instanceof Generator) {
+                                    yield from $result;
+                                }
+                                break 3;
                             }
                         }
                         break;
                 }
             }
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             if (stripos($e->getMessage(), 'invalid constructor given') === false) {
-                $this->report("Error: " . $e->getMessage());
+                $this->report("Error: " . $e);
             }
         }
+    }
+
+    /**
+     * @param $user
+     * @return Generator
+     * @throws ConnectionException
+     * @throws FailureException
+     * @throws Throwable
+     */
+    final public function isAdmin($user): Generator
+    {
+        $userID = yield $this->getInfo($user)['bot_api_id'];
+        $result = yield static::$db->execute("SELECT * FROM bot_admins WHERE user_id = ? LIMIT 1", [$userID]);
+        $row = [];
+        while (yield $result->advance()) {
+            $row += $result->getCurrent();
+        }
+        return $row !== [];
     }
 }
 
