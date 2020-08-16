@@ -12,29 +12,7 @@ use realSamy\tools\CliTextHandler;
 use realSamy\tools\ConfigHelper;
 
 include 'autoload.php';
-function repeat($text, int $num)
-{
-    $res = '';
-    for ($i = $num; $i > 0; $i--) {
-        $res .= $text;
-    }
-    return $res;
-}
 
-if (!function_exists('mb_str_split')) {
-    function mb_str_split($str, $l = 0)
-    {
-        if ($l > 0) {
-            $ret = [];
-            $len = mb_strlen($str, "UTF-8");
-            for ($i = 0; $i < $len; $i += $l) {
-                $ret[] = mb_substr($str, $i, $l, "UTF-8");
-            }
-            return $ret;
-        }
-        return preg_split("//u", $str, -1, PREG_SPLIT_NO_EMPTY);
-    }
-}
 function arrayMerge(array $array1, array $array2)
 {
     $merged = $array1;
