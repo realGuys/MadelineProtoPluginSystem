@@ -1,12 +1,19 @@
 <?php
 /**
+ * Owner commands
+ *
+ * @author  realSamy
+ * @version 1.2
+ */
+
+/**
  * Restarts the bot
  *
  * @param array $update
  * @return Generator
  */
 $command['owner']['restart'] = function (array $update): Generator {
-    $text = "راه اندازی مجدد انجام شد!";
+    $text = "Bot restarted!";
     yield $this->messages->sendMessage([
         'peer'       => $update,
         'message'    => $text,
@@ -15,28 +22,27 @@ $command['owner']['restart'] = function (array $update): Generator {
     yield $this->messages->deleteMessages(['id' => [$update['message']['id']], 'revoke' => true]);
     yield $this->restart();
 };
-
 /**
  * Reloads plugins
+ *
  * @param array $update
  * @return Generator
  */
-$command['owner']['pluginsReload'] = function (array $update): Generator {
+$command['owner']['reload'] = function (array $update): Generator {
     $sent = yield $this->messages->sendMessage([
         'peer'            => $update,
-        'message'         => "در حال به روز رسانی پلاگین سیستم... " . '(1/2)',
+        'message'         => "Reloading plugin system... (1/2)",
         'parse_mode'      => 'Markdown',
         'reply_to_msg_id' => $update['message']['id'] ?? null,
     ]);
     yield $this->onStart();
     yield $this->messages->editMessage([
         'peer'       => $update,
-        'message'    => "به روز رسانی پلاگین سیستم انجام شد ",
+        'message'    => "Plugins reloaded!",
         'parse_mode' => 'Markdown',
         'id'         => $sent['id'],
     ]);
 };
-
 /**
  * Add admins to bot
  *
@@ -47,21 +53,25 @@ $command['owner']['addAdmin'] = function (array $update): Generator {
     if (preg_match("/^(addadmin) (.*)$/i", $update['message']['message'], $matches)) {
         $user = yield $this->getInfo($matches[2])['User'];
         if (!isset($user['id'])) {
-            $text = "آیدی کاربر وارد شده اشتباه است و یا ربات تا کنون با این کاربر ارتباط نداشته است!";
+            $text = "Provided identity is not a valid user or bot don't meet that user yet";
         }
         else {
-            $this->databaseHandler->reset();
-            $db = $this->databaseHandler->insert('bot_admins', [
-                'username'   => $user['username'],
-                'first_name' => $user['first_name'] ?? $user['id'],
-                'user_id'    => $user['id'],
-                'last_name'  => $user['last_name'] ?? null,
-            ]);
-            if ($db) {
-                $text = "کاربر [{$user['first_name']}](mention:{$user['id']}) در ربات ادمین شد!";
-            }
-            else {
-                $text = "کاربر مورد نظر ادمین نشد!\nجزئیات خطا:\n" . $this->databaseHandler->getLastError();
+            try {
+                $statement = yield static::$db->prepare("INSERT INTO bot_admins (username, first_name, user_id, last_name) VALUES (:username, :first_name, :user_id, :last_name)");
+                yield $statement->execute([
+                    'user_id'    => $user['id'],
+                    'username'   => $user['username'] ?? null,
+                    'first_name' => $user['first_name'] ?? $user['id'],
+                    'last_name'  => $user['last_name'] ?? null,
+                ]);
+                $text = "User [{$user['first_name']}](mention:{$user['id']}) added to admin list";
+            } catch (Throwable $e) {
+                if (stripos($e->getMessage(), 'Duplicate')) {
+                    $text = "User [{$user['first_name']}](mention:{$user['id']}) already is an admin";
+                }
+                else {
+                    $text = "Couldn't add user to admin list\nError:\n" . $e->getMessage();
+                }
             }
         }
     }
@@ -74,22 +84,21 @@ $command['owner']['addAdmin'] = function (array $update): Generator {
             default:
                 $user = yield $this->messages->getMessages(['id' => [$update['message']['reply_to_msg_id']]])['users'][0];
         }
-        $this->databaseHandler->reset();
-        $db = $this->databaseHandler->insert('bot_admins', [
-            'username'   => $user['username'],
-            'first_name' => $user['first_name'],
-            'user_id'    => $user['id'],
-            'last_name'  => $user['last_name'] ?? null,
-        ]);
-        if ($db) {
-            $text = "کاربر [{$user['first_name']}](mention:{$user['id']}) در ربات ادمین شد!";
-        }
-        else {
-            $text = "کاربر مورد نظر ادمین نشد!\nجزئیات خطا:\n" . $this->databaseHandler->getLastError();
+        try {
+            $statement = yield static::$db->prepare("INSERT INTO bot_admins (username, first_name, user_id, last_name) VALUES (:username, :first_name, :user_id, :last_name)");
+            yield $statement->execute([
+                'user_id'    => $user['id'],
+                'username'   => $user['username'] ?? null,
+                'first_name' => $user['first_name'] ?? $user['id'],
+                'last_name'  => $user['last_name'] ?? null,
+            ]);
+            $text = "User [{$user['first_name']}](mention:{$user['id']}) added to admin list";
+        } catch (Throwable $e) {
+            $text = "Couldn't add user to admin list\nError:\n" . $e->getMessage();
         }
     }
     else {
-        $text = "**دستور را باید یا بصورت `addAdmin @username` و یا با ریپلی روی پیام شخص مورد نظر بفرستید!**";
+        $text = "Send the command like `addAdmin @username` or reply on a user and send `addAdmin`";
     }
     yield $this->messages->sendMessage([
         'peer'            => $update,
@@ -98,27 +107,24 @@ $command['owner']['addAdmin'] = function (array $update): Generator {
         'reply_to_msg_id' => $update['message']['id'],
     ]);
 };
-
 /**
  * Deletes bot admins
+ *
  * @param array $update
  * @return Generator
  */
 $command['owner']['delAdmin'] = function (array $update): Generator {
     if (preg_match("/^(deladmin) (.*)$/i", $update['message']['message'], $matches)) {
-        $user = yield $this->getInfo($matches[2])['User'] ?? null;
-        if (is_null($user)) {
-            $text = "آیدی کاربر وارد شده اشتباه است و یا ربات تا کنون با این کاربر ارتباط نداشته است!";
+        $user = yield $this->getInfo($matches[2])['User'];
+        if (!isset($user['id'])) {
+            $text = "Provided identity is not a valid user or bot don't meet that user yet";
         }
         else {
-            $this->databaseHandler->reset();
-            $this->databaseHandler->where('user_id', $user['id']);
-            $db = $this->databaseHandler->delete('bot_admins');
-            if ($db) {
-                $text = "کاربر [{$user['first_name']}](mention:{$user['id']}) از ادمینی ربات عزل شد!";
-            }
-            else {
-                $text = "کاربر مورد نظر ادمین ربات نیست!\nجزئیات خطا:\n" . $this->databaseHandler->getLastError();
+            try {
+                yield static::$db->execute("DELETE FROM bot_admins WHERE user_id = ?", [$user['id']]);
+                $text = "User [{$user['first_name']}](mention:{$user['id']}) deleted from admin list";
+            } catch (Throwable $e) {
+                $text = "User couldn't be deleted!\nError:\n" . $e->getMessage();
             }
         }
     }
@@ -131,18 +137,15 @@ $command['owner']['delAdmin'] = function (array $update): Generator {
             default:
                 $user = yield $this->messages->getMessages(['id' => [$update['message']['reply_to_msg_id']]])['users'][0];
         }
-        $this->databaseHandler->reset();
-        $this->databaseHandler->where('user_id', $user['id']);
-        $db = $this->databaseHandler->delete('bot_admins');
-        if ($db) {
-            $text = "کاربر [{$user['first_name']}](mention:{$user['id']}) از ادمینی ربات عزل شد!";
-        }
-        else {
-            $text = "کاربر مورد نظر ادمین ربات نیست!\nجزئیات خطا:\n" . $this->databaseHandler->getLastError();
+        try {
+            yield static::$db->execute("DELETE FROM bot_admins WHERE user_id = ?", [$user['id']]);
+            $text = "User [{$user['first_name']}](mention:{$user['id']}) deleted from admin list";
+        } catch (Throwable $e) {
+            $text = "User couldn't be deleted!\nError:\n" . $e->getMessage();
         }
     }
     else {
-        $text = "**دستور را باید یا بصورت `delAdmin @username` و یا با ریپلی روی پیام شخص مورد نظر بفرستید!**";
+        $text = "Send the command like `delAdmin @username` or reply on a user and send `delAdmin`";
     }
     yield $this->messages->sendMessage([
         'peer'            => $update,
@@ -151,28 +154,26 @@ $command['owner']['delAdmin'] = function (array $update): Generator {
         'reply_to_msg_id' => $update['message']['id'],
     ]);
 };
-
 /**
  * Sends admins list
+ *
  * @param array $update
  * @return Generator
  */
 $command['owner']['listAdmin'] = function (array $update): Generator {
-    $text = "لیست ادمین های ربات:\n";
+    $strResult = null;
     $c = 1;
-    $this->databaseHandler->reset();
-    $this->databaseHandler->orderBy('bot_admins.first_name');
-    $admins = $this->databaseHandler->get('bot_admins', null, 'user_id, first_name, username');
-    if ($admins !== []) {
-        foreach ($admins as $admin) {
-            $adminName = $admin['first_name'];
-            $adminID = $admin['user_id'];
-            $text .= "$c) [$adminName](mention:$adminID)\n";
-            $c++;
-        }
+    $result = yield static::$db->query("SELECT * FROM bot_admins");
+    while (yield $result->advance()) {
+        $row = $result->getCurrent();
+        $strResult .= "$c) [{$row['first_name']} {$row['last_name']}](mention:{$row['user_id']})" . PHP_EOL;
+        $c++;
+    }
+    if (!is_null($strResult)) {
+        $text = "Admins list:\n" . $strResult;
     }
     else {
-        $text = "لیست ادمین های ربات خالی است!";
+        $text = "Admins list is empty!";
     }
     yield $this->messages->sendMessage([
         'peer'            => $update,
@@ -181,5 +182,4 @@ $command['owner']['listAdmin'] = function (array $update): Generator {
         'reply_to_msg_id' => $update['message']['id'],
     ]);
 };
-
 return $command;
