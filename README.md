@@ -9,21 +9,21 @@ Just follow the way that source code itself is written in!
 |**Table Of Contents**|
 |---|
 |[1-Installation](#1-Installation)|
-|[1.1-Using Terminal](#1-1-Using-Terminal)|
-|[1.1.1-Download Repository](#1-1-1-Download-Repository)|
-|[1.1.2-Config And Run](#1-1-2-Config-And-Run)|
-|[1.2-Using Browser](#1-2-Using-Browser)|
-|[1.2.1-Download Repository](#1-2-1-Download-Repository)|
-|[1.2.2-Config And Run](#1-2-2-Config-And-Run)|
+|[1.1-Using Terminal](#11-Using-Terminal)|
+|[1.1.1-Download Repository](#111-Download-Repository)|
+|[1.1.2-Config And Run](#112-Config-And-Run)|
+|[1.2-Using Browser](#12-Using-Browser)|
+|[1.2.1-Download Repository](#121-Download-Repository)|
+|[1.2.2-Config And Run](#122-Config-And-Run)|
 |[2-Any time configuration](#2-Any-time-configuration)|
-|[2.1-Using terminal](#2-1-Using-terminal)|
-|[2.2-Using Browser](#2-2-Using-Browser)|
+|[2.1-Using terminal](#21-Using-terminal)|
+|[2.2-Using Browser](#22-Using-Browser)|
 |[3-How To Use](#3-How-To-Use)|
-|[3.1-Plugins](#3-1-Plugins)|
-|[3.1.1-Syntax](#3-1-1-Syntax)|
-|[3.1.2-Loading Plugins On Bot](#3-1-2-Loading-Plugins-On-Bot)|
-|[3.1.3-Available Plugins](#3-1-3-Available-Plugins)|
-|[3.1.4-Available Commands](#3-1-4-Available-Commands)|
+|[3.1-Plugins](#31-Plugins)|
+|[3.1.1-Syntax](#311-Syntax)|
+|[3.1.2-Loading Plugins On Bot](#312-Loading-Plugins-On-Bot)|
+|[3.1.3-Available Plugins](#313-Available-Plugins)|
+|[3.1.4-Available Commands](#314-Available-Commands)|
 
 ### 1-Installation
 
