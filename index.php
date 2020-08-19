@@ -183,7 +183,7 @@ class realGuys extends EventHandler
     public function __construct(?APIWrapper $MadelineProto)
     {
         $this->configHandler = new ConfigHelper(md5(__FILE__));
-        $config = $config = Mysql\ConnectionConfig::fromString(
+        $config = Mysql\ConnectionConfig::fromString(
             "host=" . $this->configHandler->get('DATABASE_HOST') . " user=" . $this->configHandler->get('DATABASE_USERNAME') . " password=" . $this->configHandler->get('DATABASE_PASSWORD') . " db=" . $this->configHandler->get('DATABASE_NAME')
         );
         static::$db = Mysql\pool($config);
