@@ -24,8 +24,7 @@ class ConfigHelper
             fclose(fopen($file, 'wb'));
         }
         $this->configFile = $file;
-        $this->configContents = file_get_contents($file);
-        $this->configArray = $this->configDecode($this->configContents);
+        $this->loader();
     }
 
     private function configDecode(string $config): array
@@ -33,19 +32,34 @@ class ConfigHelper
         return json_decode($config, true) ?? [];
     }
 
-    final public function get(string $key, string $default = null): ?string
+    final public function get(string $key, string $default = null, bool $reload = true): ?string
     {
+        !$reload || $this->loader();
         return $this->configArray[strtoupper($key)] ?? $default;
     }
-    final public function getArray(array $keys, array $default = null):array
+
+    /**
+     * @param array      $keys
+     * @param array|null $default
+     * @param bool       $reload
+     * @return array
+     */
+    final public function getArray(array $keys, array $default = null, bool $reload = true):array
     {
+        !$reload || $this->loader();
         $return = [];
         foreach ($keys as $index => $key) {
             $return[] = $this->configArray[$key] ?? $default[$index];
         }
         return $return;
     }
-    final public function set(string $key, string $value): bool
+
+    /**
+     * @param string $key
+     * @param mixed $value
+     * @return bool
+     */
+    final public function set(string $key, $value): bool
     {
         $this->configArray[$key] = $value;
         return $this->configSave();
@@ -62,6 +76,11 @@ class ConfigHelper
         return json_encode($config, 64|128|256);
     }
 
+    final public function loader(string $file = null): void
+    {
+        $this->configContents = file_get_contents($file ?? $this->configFile);
+        $this->configArray = $this->configDecode($this->configContents);
+    }
     final public function setArray(array $configArray): bool
     {
         foreach ($configArray as $key => $value) $this->configArray[$key] = $value;
