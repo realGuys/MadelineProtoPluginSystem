@@ -54,7 +54,7 @@ if (isset($_GET['config']) || (isset($argv) && in_array('--config', $argv, true)
     elseif (!isset($_POST['OWNER'])) {
         echo <<<HTML
 <!doctype html>
-<html lang="fa">
+<html lang="en">
 <head>
     <meta charset="utf-8">
     <meta content="width=device-width, initial-scale=1" name="viewport">
@@ -69,7 +69,7 @@ if (isset($_GET['config']) || (isset($argv) && in_array('--config', $argv, true)
         }
     </style>
 </head>
-<body class="" dir="rtl">
+<body class="">
 
 <main class="level-item py-6">
     <form class="control" method="post">
@@ -80,7 +80,7 @@ if (isset($_GET['config']) || (isset($argv) && in_array('--config', $argv, true)
                 <input class="input is-primary" id="adminID" name="OWNER" value="{$configHandler->get('OWNER')}" required type="text">
                 <hr>
               <label class="label" for="MadelineVer">Select MadelineProto Version: </label>
-              <select name="MADELINE_VERSION" dir="rtl" class="input" id="MadelineVer">
+              <select name="MADELINE_VERSION" class="input" id="MadelineVer">
                 <optgroup label = "php7.4+">
                 <option value="new">New (Unofficial Phar, Uses MySQL Instead Of Ram)</option>
                   </optgroup>
