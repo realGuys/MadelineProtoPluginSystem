@@ -186,7 +186,7 @@ class realGuys extends EventHandler
         $config = Mysql\ConnectionConfig::fromString(
             "host=" . $this->configHandler->get('DATABASE_HOST') . " user=" . $this->configHandler->get('DATABASE_USERNAME') . " password=" . $this->configHandler->get('DATABASE_PASSWORD') . " db=" . $this->configHandler->get('DATABASE_NAME')
         );
-        static::$db = Mysql\pool($config);
+        static::$db = Mysql\pool($config, 10);
         parent::__construct($MadelineProto);
     }
 
