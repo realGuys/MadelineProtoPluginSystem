@@ -28,7 +28,7 @@ function arrayMerge(array $array1, array $array2)
 }
 
 $configHandler = new ConfigHelper(md5(__FILE__));
-if (isset($_GET['config']) || (isset($argv) && in_array('--config', $argv, true)) || $configHandler->get('SETUP_DONE') === null) {
+if (isset($_GET['config']) || (isset($argv) && is_array($argv) && in_array('--config', $argv, true)) || $configHandler->get('SETUP_DONE') === null) {
     if (PHP_SAPI === 'cli') {
         version:
         $madelineVersion = strtolower(CliTextHandler::readline('MadelineProto version (new/old): %s', 3, true));
