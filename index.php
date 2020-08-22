@@ -1,5 +1,17 @@
 <?php
 
+/**
+ * MadelineProto Plugin System
+ *
+ * @category  Telegram Bot Source Base
+ * @package   MadelineProto Plugin System
+ * @author    Saman Hoodaji <contact@realSamy.ir>
+ * @copyright Copyright (c) 2019-2020
+ * @license   http://opensource.org/licenses/gpl-3.0.html GNU Public License
+ * @link      http://github.com/realGuys/MadelineProtoPluginSystem
+ * @version   V1.5
+ */
+
 use Amp\Mysql;
 use Amp\Mysql\Pool;
 use Amp\Sql\ConnectionException;
@@ -12,7 +24,6 @@ use realSamy\tools\CliTextHandler;
 use realSamy\tools\ConfigHelper;
 
 include 'autoload.php';
-
 function arrayMerge(array $array1, array $array2)
 {
     $merged = $array1;
@@ -42,13 +53,32 @@ if (isset($_GET['config']) || (isset($argv) && is_array($argv) && in_array('--co
             echo CliTextHandler::echo_red('Admin ID was not correct, enter valid username or id') . PHP_EOL;
             goto admin;
         }
-        $configs = [
-            'OWNER'             => $adminID,
-            'MADELINE_VERSION'  => $madelineVersion,
-            'DATABASE_HOST'     => CliTextHandler::readline('database host: '),
-            'DATABASE_USERNAME' => CliTextHandler::readline('database username: '),
-            'DATABASE_PASSWORD' => CliTextHandler::readline('database password: '),
-            'DATABASE_NAME'     => CliTextHandler::readline('database name: '),
+        $configs = [];
+        echo 'Set to ' . CliTextHandler::echo_light_green(!empty($configs['DATABASE_HOST'] = CliTextHandler::readline('database host: ')) ? $configs['DATABASE_HOST'] : ($configs['DATABASE_HOST'] = $configHandler->get('DATABASE_HOST', 'localhost'))) . PHP_EOL;
+        username:
+        (!empty($configs['DATABASE_USERNAME'] = CliTextHandler::readline('database username: ')) ? $configs['DATABASE_USERNAME'] : ($configs['DATABASE_USERNAME'] = null));
+        if (empty($configs['DATABASE_USERNAME'])) {
+            goto username;
+        }
+        echo 'Set to ' . CliTextHandler::echo_light_green($configs['DATABASE_USERNAME']) . PHP_EOL;
+        password:
+        (!empty($configs['DATABASE_PASSWORD'] = CliTextHandler::readline('database password: ')) ? $configs['DATABASE_PASSWORD'] : ($configs['DATABASE_PASSWORD'] = $configHandler->get('DATABASE_PASSWORD')));
+        if (empty($configs['DATABASE_PASSWORD'])) {
+            $confirm = CliTextHandler::readline('To confirm empty password type ' . CliTextHandler::echo_green('true') . ' or press ' . CliTextHandler::echo_blue('Enter') . ' to enter your password: ');
+            if (stripos($confirm, 'true') === false) {
+                goto password;
+            }
+        }
+        echo 'Set to ' . CliTextHandler::echo_light_green($configs['DATABASE_PASSWORD'] ?? 'EMPTY!') . PHP_EOL;
+        database:
+        (!empty($configs['DATABASE_NAME'] = CliTextHandler::readline('database name: ')) ? $configs['DATABASE_NAME'] : ($configs['DATABASE_NAME'] = $configHandler->get('DATABASE_NAME')));
+        if (empty($configs['DATABASE_NAME'])) {
+            goto database;
+        }
+        echo 'Set to ' . CliTextHandler::echo_light_green($configs['DATABASE_USERNAME']) . PHP_EOL;
+        $configs += [
+            'OWNER'            => $adminID,
+            'MADELINE_VERSION' => $madelineVersion,
         ];
     }
     elseif (!isset($_POST['OWNER'])) {
@@ -59,13 +89,10 @@ if (isset($_GET['config']) || (isset($argv) && is_array($argv) && in_array('--co
     <meta charset="utf-8">
     <meta content="width=device-width, initial-scale=1" name="viewport">
     <title>Tabchi config</title>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.9.0/css/bulma-rtl.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.9.0/css/bulma.min.css" rel="stylesheet">
     <style>
-        @import url('https://cdn.fontcdn.ir/Font/Persian/Vazir/Vazir.css');
-
         body {
             background: linear-gradient(120deg, #00ff7b 0%, #00ffff 100%);
-            font-family: Vazir, sans-serif;
         }
     </style>
 </head>
@@ -178,8 +205,17 @@ class realGuys extends EventHandler
      * @var ConfigHelper
      */
     public $configHandler;
+    /**
+     * @var int
+     */
     public $ownerID;
 
+    /**
+     * realGuys constructor.
+     *
+     * @param APIWrapper|null $MadelineProto
+     * @since V1.0
+     */
     public function __construct(?APIWrapper $MadelineProto)
     {
         $this->configHandler = new ConfigHelper(md5(__FILE__));
@@ -194,6 +230,7 @@ class realGuys extends EventHandler
      * Get peer(s) where to report errors
      *
      * @return int|string|array
+     * @since V1.0
      */
     final public function getReportPeers(): array
     {
@@ -204,20 +241,26 @@ class realGuys extends EventHandler
      * Called on startup, can contain async calls for initialization of the bot
      *
      * @return Generator
+     * @since V1.0
      */
     final public function onStart(): Generator
     {
         try {
             $this->ownerID = yield $this->getInfo($this->configHandler->get('OWNER'))['bot_api_id'];
-            yield static::$db->query('CREATE TABLE IF NOT EXISTS bot_admins 
+            yield static::$db->query('CREATE TABLE IF NOT EXISTS bot_admins
 (
 	`id` INT AUTO_INCREMENT PRIMARY KEY NOT NULL,
 	`username` VARCHAR(30) NULL,
 	`user_id` BIGINT UNIQUE NOT NULL,
 	`first_name` VARCHAR(30) NOT NULL,
 	`last_name` VARCHAR(30) NULL,
+	`owner` BOOL DEFAULT FALSE,
 	`added` DATETIME DEFAULT current_timestamp() NOT NULL
 ) DEFAULT CHARSET=utf8mb4;');
+            try {
+                yield static::$db->query('ALTER TABLE bot_admins ADD COLUMN `owner` BOOL DEFAULT FALSE;');
+            } catch (Throwable $e) {
+            }
             static::$closures = [];
             $merged = [];
             foreach (glob('plugins/*') as $plugin) {
@@ -250,6 +293,7 @@ class realGuys extends EventHandler
      *
      * @param array $update Update
      * @return Generator
+     * @since V1.0
      */
     final public function onUpdateNewChannelMessage(array $update): Generator
     {
@@ -261,6 +305,7 @@ class realGuys extends EventHandler
      *
      * @param array $update Update
      * @return Generator
+     * @since V1.0
      */
     final public function onUpdateNewMessage(array $update): Generator
     {
@@ -269,33 +314,15 @@ class realGuys extends EventHandler
         }
         try {
             foreach (static::$closures as $roleName => $closures) {
-		if ($roleName === 'owner' && $update['message']['from_id'] !== $this->ownerID) {
+                if ($roleName === 'owner' && $update['message']['from_id'] !== $this->ownerID) {
                     continue;
                 }
-                if ($roleName === 'admin' && $update['message']['from_id'] !== $this->ownerID && !$this->isAdmin($update['message']['from_id'])) {
+                if ($roleName === 'admin' && $update['message']['from_id'] !== $this->ownerID && !yield $this->isAdmin($update['message']['from_id'])) {
                     continue;
                 }
                 switch ($roleName) {
                     case 'owner':
-                        foreach ($closures as $command => $closure) {
-                            if (stripos($update['message']['message'] ?? '', $command) === 0) {
-                                if (($result = $closure($update)) instanceof Generator) {
-                                    yield from $result;
-                                }
-                                break 3;
-                            }
-                        }
-                        break;
                     case 'admin':
-                        foreach ($closures as $command => $closure) {
-                            if (stripos($update['message']['message'] ?? '', $command) === 0) {
-                                if (($result = $closure($update)) instanceof Generator) {
-                                    yield from $result;
-                                }
-                                break 3;
-                            }
-                        }
-                        break;
                     case 'user':
                     default:
                         foreach ($closures as $command => $closure) {
@@ -317,21 +344,37 @@ class realGuys extends EventHandler
     }
 
     /**
-     * @param $user
+     * Check whether user is in admin list
+     *
+     * @param string $user
+     * @param bool   $owner
      * @return Generator
      * @throws ConnectionException
      * @throws FailureException
-     * @throws Throwable
+     * @since V1.5
      */
-    final public function isAdmin($user): Generator
+    final public function isAdmin(string $user, bool $owner = false): Generator
     {
         $userID = yield $this->getInfo($user)['bot_api_id'];
-        $result = yield static::$db->execute("SELECT * FROM bot_admins WHERE user_id = ? LIMIT 1", [$userID]);
-        $row = [];
-        while (yield $result->advance()) {
-            $row += $result->getCurrent();
-        }
-        return $row !== [];
+        $ownerStr = $owner ? 'AND owner = TRUE' : '';
+        $row = yield static::getArray("SELECT * FROM bot_admins WHERE user_id = ? $ownerStr LIMIT 1", [$userID]);
+        return ((yield $row) !== []);
+    }
+
+    /**
+     * Get array of SQL query result
+     *
+     * @param string $sql
+     * @param array  $params
+     * @return Generator
+     * @throws ConnectionException
+     * @throws FailureException
+     * @since V1.5
+     */
+    public static function getArray(string $sql, array $params = []): Generator
+    {
+        $result = yield static::$db->execute($sql, $params);
+        return yield Amp\Iterator\toArray($result);
     }
 }
 
