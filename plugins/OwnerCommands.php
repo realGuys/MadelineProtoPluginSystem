@@ -3,7 +3,7 @@
  * Owner commands
  *
  * @author  realSamy
- * @version 1.2
+ * @version V1.5
  */
 
 /**
@@ -57,7 +57,7 @@ $command['owner']['addAdmin'] = function (array $update): Generator {
         }
         else {
             try {
-                $statement = yield static::$db->prepare("INSERT INTO bot_admins (username, first_name, user_id, last_name) VALUES (:username, :first_name, :user_id, :last_name)");
+                $statement = yield $this::$db->prepare("INSERT INTO bot_admins (username, first_name, user_id, last_name) VALUES (:username, :first_name, :user_id, :last_name)");
                 yield $statement->execute([
                     'user_id'    => $user['id'],
                     'username'   => $user['username'] ?? null,
@@ -66,8 +66,9 @@ $command['owner']['addAdmin'] = function (array $update): Generator {
                 ]);
                 $text = "User [{$user['first_name']}](mention:{$user['id']}) added to admin list";
             } catch (Throwable $e) {
-                if (stripos($e->getMessage(), 'Duplicate')) {
-                    $text = "User [{$user['first_name']}](mention:{$user['id']}) already is an admin";
+                if (stripos($e->getMessage(), 'Duplicate') !== false) {
+                    yield $this::$db->execute('UPDATE bot_admins SET owner = FALSE WHERE user_id = ?', [$user['id']]);
+                    $text = "User [{$user['first_name']}](mention:{$user['id']}) demoted to admin";
                 }
                 else {
                     $text = "Couldn't add user to admin list\nError:\n" . $e->getMessage();
@@ -85,7 +86,7 @@ $command['owner']['addAdmin'] = function (array $update): Generator {
                 $user = yield $this->messages->getMessages(['id' => [$update['message']['reply_to_msg_id']]])['users'][0];
         }
         try {
-            $statement = yield static::$db->prepare("INSERT INTO bot_admins (username, first_name, user_id, last_name) VALUES (:username, :first_name, :user_id, :last_name)");
+            $statement = yield $this::$db->prepare("INSERT INTO bot_admins (username, first_name, user_id, last_name) VALUES (:username, :first_name, :user_id, :last_name)");
             yield $statement->execute([
                 'user_id'    => $user['id'],
                 'username'   => $user['username'] ?? null,
@@ -94,11 +95,119 @@ $command['owner']['addAdmin'] = function (array $update): Generator {
             ]);
             $text = "User [{$user['first_name']}](mention:{$user['id']}) added to admin list";
         } catch (Throwable $e) {
-            $text = "Couldn't add user to admin list\nError:\n" . $e->getMessage();
+            if (stripos($e->getMessage(), 'Duplicate') !== false) {
+                yield $this::$db->execute('UPDATE bot_admins SET owner = FALSE WHERE user_id = ?', [$user['id']]);
+                $text = "User [{$user['first_name']}](mention:{$user['id']}) demoted to admin";
+            }
+            else {
+                $text = "Couldn't add user to admin list\nError:\n" . $e->getMessage();
+            }
         }
     }
     else {
         $text = "Send the command like `addAdmin @username` or reply on a user and send `addAdmin`";
+    }
+    yield $this->messages->sendMessage([
+        'peer'            => $update,
+        'message'         => $text,
+        'parse_mode'      => 'Markdown',
+        'reply_to_msg_id' => $update['message']['id'],
+    ]);
+};
+/**
+ * Add owners to bot
+ *
+ * @param array $update
+ * @return Generator
+ */
+$command['owner']['addOwner'] = function (array $update): Generator {
+    assert($this instanceof realGuys, '');
+    if (preg_match("/^(addOwner) (.*)$/i", $update['message']['message'], $matches)) {
+        $user = yield $this->getInfo($matches[2])['User'];
+        if (!isset($user['id'])) {
+            $text = "Provided identity is not a valid user or bot don't meet that user yet";
+        }
+        else {
+            try {
+                $statement = yield $this::$db->prepare("INSERT INTO bot_admins (username, first_name, user_id, last_name, owner) VALUES (:username, :first_name, :user_id, :last_name, :owner)");
+                yield $statement->execute([
+                    'user_id'    => $user['id'],
+                    'username'   => $user['username'] ?? null,
+                    'first_name' => $user['first_name'] ?? $user['id'],
+                    'last_name'  => $user['last_name'] ?? null,
+                    'owner'      => true,
+                ]);
+                $text = "User [{$user['first_name']}](mention:{$user['id']}) added to owner list";
+            } catch (Throwable $e) {
+                if (stripos($e->getMessage(), 'Duplicate')) {
+                    yield $this::$db->execute('UPDATE bot_admins SET owner = TRUE WHERE user_id = ?', [$user['id']]);
+                    $text = "User [{$user['first_name']}](mention:{$user['id']}) promoted to owner";
+                }
+                else {
+                    $text = "Couldn't add user to owner list\nError:\n" . $e->getMessage();
+                }
+            }
+        }
+    }
+    elseif ($update['message']['reply_to_msg_id'] ?? false) {
+        switch (yield $this->getInfo($update)['type']) {
+            case 'channel':
+            case 'supergroup':
+                $user = yield $this->channels->getMessages(['channel' => $update, 'id' => [$update['message']['reply_to_msg_id']]])['users'][0];
+                break;
+            default:
+                $user = yield $this->messages->getMessages(['id' => [$update['message']['reply_to_msg_id']]])['users'][0];
+        }
+        try {
+            $statement = yield $this::$db->prepare("INSERT INTO bot_admins (username, first_name, user_id, last_name, owner) VALUES (:username, :first_name, :user_id, :last_name, :owner)");
+            yield $statement->execute([
+                'user_id'    => $user['id'],
+                'username'   => $user['username'] ?? null,
+                'first_name' => $user['first_name'] ?? $user['id'],
+                'last_name'  => $user['last_name'] ?? null,
+                'owner'      => true,
+            ]);
+            $text = "User [{$user['first_name']}](mention:{$user['id']}) added to owner list";
+        } catch (Throwable $e) {
+            if (stripos($e->getMessage(), 'Duplicate')) {
+                yield $this::$db->execute('UPDATE bot_admins SET owner = TRUE WHERE user_id = ?', [$user['id']]);
+                $text = "User [{$user['first_name']}](mention:{$user['id']}) promoted to owner";
+            }
+            else {
+                $text = "Couldn't add user to owner list\nError:\n" . $e->getMessage();
+            }
+        }
+    }
+    else {
+        $text = "Send the command like `addAdmin @username` or reply on a user and send `addAdmin`";
+    }
+    yield $this->messages->sendMessage([
+        'peer'            => $update,
+        'message'         => $text,
+        'parse_mode'      => 'Markdown',
+        'reply_to_msg_id' => $update['message']['id'],
+    ]);
+};
+/**
+ * Sends admins list
+ *
+ * @param array $update
+ * @return Generator
+ */
+$command['owner']['listAdmin'] = function (array $update): Generator {
+    $strResult = null;
+    $c = 1;
+    $result = yield $this::$db->query("SELECT * FROM bot_admins");
+    while (yield $result->advance()) {
+        $row = $result->getCurrent();
+        $strResult .= "$c) [{$row['first_name']} {$row['last_name']}](mention:{$row['user_id']}) Role: " . ($row['owner'] ? '`Owner`' : '`Admin`') . PHP_EOL;
+        $c++;
+    }
+    if (!is_null($strResult)) {
+        $text = "Admins list:\n" . $strResult;
+    }
+    else {
+        $text = "Admins list is empty!";
     }
     yield $this->messages->sendMessage([
         'peer'            => $update,
@@ -121,7 +230,7 @@ $command['owner']['delAdmin'] = function (array $update): Generator {
         }
         else {
             try {
-                yield static::$db->execute("DELETE FROM bot_admins WHERE user_id = ?", [$user['id']]);
+                yield $this::$db->execute("DELETE FROM bot_admins WHERE user_id = ?", [$user['id']]);
                 $text = "User [{$user['first_name']}](mention:{$user['id']}) deleted from admin list";
             } catch (Throwable $e) {
                 $text = "User couldn't be deleted!\nError:\n" . $e->getMessage();
@@ -138,7 +247,7 @@ $command['owner']['delAdmin'] = function (array $update): Generator {
                 $user = yield $this->messages->getMessages(['id' => [$update['message']['reply_to_msg_id']]])['users'][0];
         }
         try {
-            yield static::$db->execute("DELETE FROM bot_admins WHERE user_id = ?", [$user['id']]);
+            yield $this::$db->execute("DELETE FROM bot_admins WHERE user_id = ?", [$user['id']]);
             $text = "User [{$user['first_name']}](mention:{$user['id']}) deleted from admin list";
         } catch (Throwable $e) {
             $text = "User couldn't be deleted!\nError:\n" . $e->getMessage();
@@ -155,31 +264,31 @@ $command['owner']['delAdmin'] = function (array $update): Generator {
     ]);
 };
 /**
- * Sends admins list
- *
+ * Enable/Disable reporting errors
  * @param array $update
  * @return Generator
  */
-$command['owner']['listAdmin'] = function (array $update): Generator {
-    $strResult = null;
-    $c = 1;
-    $result = yield static::$db->query("SELECT * FROM bot_admins");
-    while (yield $result->advance()) {
-        $row = $result->getCurrent();
-        $strResult .= "$c) [{$row['first_name']} {$row['last_name']}](mention:{$row['user_id']})" . PHP_EOL;
-        $c++;
-    }
-    if (!is_null($strResult)) {
-        $text = "Admins list:\n" . $strResult;
-    }
-    else {
-        $text = "Admins list is empty!";
+$command['owner']['getReports'] = function (array $update): Generator {
+    $result = strtolower(str_ireplace('getReports ', null, $update['message']['message']));
+    switch ($result) {
+        case 'on':
+            $text = "Reporting errors enabled";
+            $this->configHandler->set('BOT_GET_REPORTS', true);
+            break;
+        case 'off':
+            $text = "Reporting errors disabled";
+            $this->configHandler->set('BOT_GET_REPORTS', false);
+            break;
+        default:
+            $text = "Send command by `on` or `off`";
+            break;
     }
     yield $this->messages->sendMessage([
         'peer'            => $update,
         'message'         => $text,
         'parse_mode'      => 'Markdown',
-        'reply_to_msg_id' => $update['message']['id'],
+        'reply_to_msg_id' => $update['message']['id'] ?? null,
     ]);
 };
+
 return $command;

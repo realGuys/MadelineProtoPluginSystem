@@ -8,7 +8,7 @@
  * @copyright Copyright (c) 2019-2020
  * @license   http://opensource.org/licenses/gpl-3.0.html GNU Public License
  * @link      http://github.com/realGuys/MadelineProtoPluginSystem
- * @version   1.0.0
+ * @version   V1.5
  */
 
 namespace realSamy\tools;
