@@ -1,4 +1,4 @@
-# MadelineProtoPluginSystem
+# MadelineProto Plugin System V1.5
 > A fully async plugin-friendly [MadelineProto](https://github.com/danog/MadelineProto) source base
 ___
 Use this source code to make your ideas in a nice async way!
@@ -110,8 +110,11 @@ There is some plugins for add admin access to other users, reloading plugins e.g
 **Command**|**Information**
 -----|-----
 ping|Just a simple ping command!
+getReprots (`on`\|`off`)|Enable/Disable error reporting
 addAdmin (`@username`\|`reply`)|Adds new admins to bot using addAdmin @username or simply reply this command on a message
+addOwner (`@username`\|`reply`)|Adds new owners to bot, use just like `addAdmin`!
 delAdmin (`@username`\|`reply`)|Removes admins from bot, use just like `addAdmin`!
 listAdmin|Sends a list of current admins
 reload|Reloads Plugin System `e.g. to apply new changes`
-restart|Shuts the bot down!
+restart|Restarts the bot
+shutdown|Shuts the bot down
