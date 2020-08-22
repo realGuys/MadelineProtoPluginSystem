@@ -22,6 +22,25 @@ $command['owner']['restart'] = function (array $update): Generator {
     yield $this->messages->deleteMessages(['id' => [$update['message']['id']], 'revoke' => true]);
     yield $this->restart();
 };
+
+/**
+ * Shutdowns the bot
+ *
+ * @param array $update
+ * @return Generator
+ */
+$command['owner']['shutdown'] = function (array $update): Generator {
+    $text = "Bot turned off!";
+    yield $this->messages->sendMessage([
+        'peer'       => $update,
+        'message'    => $text,
+        'parse_mode' => 'Markdown',
+    ]);
+    yield $this->messages->deleteMessages(['id' => [$update['message']['id']], 'revoke' => true]);
+    die();
+    
+};
+
 /**
  * Reloads plugins
  *
