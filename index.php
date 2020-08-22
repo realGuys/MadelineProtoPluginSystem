@@ -96,7 +96,7 @@ if (isset($_GET['config']) || (isset($argv) && is_array($argv) && in_array('--co
                 <label class="label" for="username">Username: </label>
                 <input class="input is-primary" id="username" name="DATABASE_USERNAME" value="{$configHandler->get('DATABASE_USERNAME')}" required type="text">
                 <label class="label" for="password">Password:</label>
-                <input class="input is-primary" id="password" name="DATABASE_PASSWORD" value="'{$configHandler->get('DATABASE_PASSWORD')}'" type="password">
+                <input class="input is-primary" id="password" name="DATABASE_PASSWORD" value="{$configHandler->get('DATABASE_PASSWORD')}" type="password">
                 <label class="label" for="database">Database:</label>
                 <input class="input is-primary" id="database" name="DATABASE_NAME" value="{$configHandler->get('DATABASE_NAME')}" required type="text">
 
