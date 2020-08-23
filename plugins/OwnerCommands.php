@@ -59,7 +59,7 @@ $command['owner']['reload'] = function (array $update): Generator {
         'peer'       => $update,
         'message'    => "Plugins reloaded!",
         'parse_mode' => 'Markdown',
-        'id'         => $sent['id'],
+        'id'         => $sent['id'] ?? $sent['updates'][0]['id'],
     ]);
 };
 /**
