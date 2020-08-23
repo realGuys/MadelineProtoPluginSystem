@@ -99,7 +99,7 @@ if (isset($_GET['config']) || (isset($argv) && is_array($argv) && in_array('--co
 <body class="">
 
 <main class="level-item py-6">
-    <form class="control" method="post">
+    <form class="control" method="post" action="?">
         <div class="card has-shadow">
             <div class="card-header px-4 py-3"> Please Enter All Requested Fields!</div>
             <div class="card-content">
