@@ -110,7 +110,7 @@ There is some plugins for add admin access to other users, reloading plugins e.g
 **Command**|**Information**
 -----|-----
 ping|Just a simple ping command!
-getReprots (`on`\|`off`)|Enable/Disable error reporting
+getReports (`on`\|`off`)|Enable/Disable error reporting
 addAdmin (`@username`\|`reply`)|Adds new admins to bot using addAdmin @username or simply reply this command on a message
 addOwner (`@username`\|`reply`)|Adds new owners to bot, use just like `addAdmin`!
 delAdmin (`@username`\|`reply`)|Removes admins from bot, use just like `addAdmin`!
