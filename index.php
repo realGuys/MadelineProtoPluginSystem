@@ -314,10 +314,10 @@ class realGuys extends EventHandler
         }
         try {
             foreach (static::$closures as $roleName => $closures) {
-                if ($roleName === 'owner' && $update['message']['from_id'] !== $this->ownerID && !yield $this->isAdmin($update['message']['from_id'], true)) {
+                if ($roleName === 'owner' && $update['message']['from_id']['user_id'] ?? $update['message']['peer_id']['user_id'] !== $this->ownerID && !yield $this->isAdmin($update['message']['from_id']['user_id'] ?? $update['message']['peer_id']['user_id'], true)) {
                     continue;
                 }
-                if ($roleName === 'admin' && $update['message']['from_id'] !== $this->ownerID && !yield $this->isAdmin($update['message']['from_id'])) {
+                if ($roleName === 'admin' && $update['message']['from_id']['user_id'] ?? $update['message']['peer_id']['user_id'] !== $this->ownerID && !yield $this->isAdmin($update['message']['from_id']['user_id'] ?? $update['message']['peer_id']['user_id'])) {
                     continue;
                 }
                 switch ($roleName) {
