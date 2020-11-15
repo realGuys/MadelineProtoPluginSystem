@@ -216,7 +216,7 @@ class realGuys extends EventHandler
      * @param APIWrapper|null $MadelineProto
      * @since V1.0
      */
-    public function initInternal(?APIWrapper $MadelineProto)
+    public function initInternal(?APIWrapper $MadelineProto): void
     {
         $this->configHandler = new ConfigHelper(md5(__FILE__));
         $config = Mysql\ConnectionConfig::fromString(
