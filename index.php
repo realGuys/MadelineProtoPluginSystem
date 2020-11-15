@@ -216,14 +216,14 @@ class realGuys extends EventHandler
      * @param APIWrapper|null $MadelineProto
      * @since V1.0
      */
-    public function __construct(?APIWrapper $MadelineProto)
+    public function initInternal(?APIWrapper $MadelineProto)
     {
         $this->configHandler = new ConfigHelper(md5(__FILE__));
         $config = Mysql\ConnectionConfig::fromString(
             "host=" . $this->configHandler->get('DATABASE_HOST') . " user=" . $this->configHandler->get('DATABASE_USERNAME') . " password=" . $this->configHandler->get('DATABASE_PASSWORD') . " db=" . $this->configHandler->get('DATABASE_NAME')
         );
         static::$db = Mysql\pool($config, 10);
-        parent::__construct($MadelineProto);
+        parent::initInternal($MadelineProto);
     }
 
     /**
